@@ -71,12 +71,14 @@
   <button id="bPlay" class="green" style="max-width:280px">Играть</button>
 </div>
 <div class="ovl" id="ovlEnd"><div class="big" id="endIcon">🏆</div><h2 id="endTitle"></h2><p id="endText"></p>
-  <div id="quote"></div><a id="wikiLink" href="#" target="_blank" rel="noopener" style="display:none">Подробнее на Википедии →</a>
+  <button id="bSkipEnd" style="max-width:280px;display:none">⏭ Пропустить уровень — 3 голоса</button>
   <button id="bNext" class="green" style="max-width:280px">Дальше</button></div>
 <div class="ovl" id="ovlLives"><div class="big">💔</div><h2>Жизни кончились</h2>
   <p id="waitText"></p>
   <button id="bAd2" class="gold" style="max-width:280px">📺 Посмотреть рекламу: +1 ❤️</button>
-  <button id="bBuy2" style="max-width:280px">💜 Купить сердце за голоса</button>
+  <button id="bBuy2" style="max-width:280px">💜 Купить сердце — 2 голоса</button>
+  <button id="bSkip2" style="max-width:280px">⏭ Пропустить уровень — 3 голоса</button>
+  <button id="bVip" class="gold" style="max-width:280px">👑 VIP: ∞ сердец и без рекламы — 199</button>
 </div>
 
 
@@ -163,7 +165,7 @@ function toggleMute(){
    Свап соседних, match 3+, комбо 4+, каскады с множителем,
    генерация без стартовых матчей, проверка ходов (reshuffle),
    уровни-эпохи, таймер, 5 сердец с регеном 1 шт за 3 часа, сейф safeStore,
-   заглушки: rewarded-реклама, сердца за голоса ВК/ОКи, вызов друга. */
+   заглушки: rewarded-реклама, сердца и VIP за голоса ВК/ОКи, вызов друга. */
 
 var mem = {};
 function sGet(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:JSON.parse(v);}catch(e){ return (k in mem)?mem[k]:d; } }
@@ -196,12 +198,12 @@ function levelStyle(i){
   var L=LEVELS[i], h=(L.h+(i*11)%30)%360, h2=(h+35)%360;
   var l1=15-(i%6), l2=7+(i%4);
   var pat = PATTERNS[i%PATTERNS.length].replace(/HUE/g,h).replace(/H2/g,h2).replace(/L2/g,l2).replace(/L(?!2)/g,l1);
-  document.body.style.setProperty('--acc','hsl('+h+',70%,60%)');
+  document.body.style.setProperty('--acc','hsl('+h+',85%,62%)');
   document.body.style.background=pat;
   var b=$('board'); if(b) b.style.background='hsl('+h+',32%,19%)';
 }
 
-var S = sGet('retromatch_save', { lvl:0, lives:5, lastLife:Date.now(), record:0 });
+var S = sGet('retromatch_save', { lvl:0, lives:5, lastLife:Date.now(), record:0, vip:false });
 var N = 8;
 var grid = [];
 var sel = null;
@@ -229,6 +231,7 @@ function refillLives(){
   sSet('retromatch_save',S);
 }
 function spendLife(){
+  if(S.vip){ drawLives(); return; } // VIP: сердца не тратятся
   if(S.lives>=MAX_LIVES){ S.lastLife=Date.now(); } // реген-таймер стартует с момента траты
   S.lives=Math.max(0,S.lives-1); sSet('retromatch_save',S); drawLives();
 }
@@ -295,9 +298,13 @@ function draw(){
 }
 function drawLives(){
   var bm=document.getElementById('bMute'); if(bm) bm.textContent=S.mute?'🔇':'🎵';
-  var h=''; for(var i=0;i<MAX_LIVES;i++) h+='<span class="lv'+(i<S.lives?' on':'')+'">❤️</span>';
-  $('livesBox').innerHTML=h;
+  if(S.vip){ $('livesBox').innerHTML='👑 ∞'; }
+  else{
+    var h=''; for(var i=0;i<MAX_LIVES;i++) h+='<span class="lv'+(i<S.lives?' on':'')+'">❤️</span>';
+    $('livesBox').innerHTML=h;
+  }
   $('scoreBox').textContent=score+' / '+goalFor(S.lvl);
+  updateMonetButtons();
 }
 function popCells(keys){
   var b=$('board');
@@ -443,12 +450,14 @@ function win(){
   showQuote(S.lvl);
   S.lvl = (S.lvl+1)%LEVELS.length; sSet('retromatch_save',S);
   $('bNext').textContent = S.lvl===0 ? 'Начать заново' : 'Следующий уровень';
+  $('bSkipEnd').style.display='none';
   $('ovlEnd').classList.add('show');
 }
 function lose(){
   $('endIcon').textContent='⏰'; $('endTitle').textContent='Время вышло';
   $('endText').textContent='Жизнь сгорела. Нужно было набрать '+goalFor(S.lvl)+' очков — попробуй ещё раз!';
   $('bNext').textContent='Ещё раз';
+  if(!S.vip) $('bSkipEnd').style.display='block';
   $('ovlEnd').classList.add('show');
 }
 $('bNext').onclick=function(){
@@ -458,6 +467,7 @@ $('bNext').onclick=function(){
 
 // оверлей жизней
 function showLivesOvl(){
+  if(S.vip){ startLevel(); return; } // VIP: сердца бесконечные — сразу играем
   refillLives();
   if(S.lives>0){ startLevel(); return; }
   var eta=livesEta();
@@ -468,9 +478,20 @@ function showLivesOvl(){
 $('bAd2').onclick=function(){ grantReward(); };
 $('bAd').onclick=function(){ grantReward(); };
 $('bBuy').onclick=$('bBuy2').onclick=function(){ buyHeart(); };
+$('bSkip2').onclick=function(){ buySkip(); };
+$('bSkipEnd').onclick=function(){ buySkip(); };
+$('bVip').onclick=function(){ buyVIP(); };
 
-// заглушки монетизации: здесь в релизе подключаются SDK
+// монетизация: цены в голосах ВК / ОКах. Пока эмуляция, релизные вызовы — в комментариях.
+var PRICES={ heart:2, skip:3, vip:199 };
+function spendCoins(amount,what,onOk){
+  // РЕЛИЗ: VK — vkBridge.send('VKWebAppShowOrderBox',{type:'item',item:'<id товара>'});
+  //        ОК — FAPI.UI.showPayment(...). Сервер сверяет платёж и только потом выдаёт товар.
+  toast('Эмуляция: оплачено «'+what+'» — '+amount+' голосов/ОКов');
+  onOk();
+}
 function grantReward(){
+  if(S.vip){ toast('👑 VIP: реклама отключена'); return; }
   // РЕЛИЗ: Яндекс — ysdk.adv.showRewardedVideo; VK — VKWebAppShowNativeAds (reward);
   // ОК — FAPI.UI.showAd('rewarded'). Пока эмуляция с кулдауном 30 мин (как в Хомакоине).
   var last=+sGet('rm_ad_ts',0);
@@ -483,11 +504,37 @@ function grantReward(){
   $('ovlLives').classList.remove('show');
 }
 function buyHeart(){
-  // РЕЛИЗ: VK — VKWebAppShowOrderBox (голоса); ОК — FAPI.UI.showPayment (ОКи).
+  if(S.vip){ toast('👑 VIP: сердца бесконечные'); return; }
   if(S.lives>=MAX_LIVES){ toast('Все сердца на месте'); return; }
-  S.lives++; S.lastLife=Date.now(); sSet('retromatch_save',S);
-  drawLives(); toast('Сердце куплено! (эмуляция — в релизе списание голосов/ОКов)');
-  $('ovlLives').classList.remove('show');
+  spendCoins(PRICES.heart,'+1 сердце',function(){
+    S.lives=Math.min(MAX_LIVES,S.lives+1); S.lastLife=Date.now(); sSet('retromatch_save',S);
+    drawLives(); toast('Сердце куплено!');
+    $('ovlLives').classList.remove('show');
+  });
+}
+function buySkip(){
+  $('ovlLives').classList.remove('show'); $('ovlEnd').classList.remove('show');
+  if(S.vip){
+    S.lvl=(S.lvl+1)%LEVELS.length; sSet('retromatch_save',S); startLevel(); return;
+  }
+  spendCoins(PRICES.skip,'пропуск уровня',function(){
+    S.lvl=(S.lvl+1)%LEVELS.length; sSet('retromatch_save',S); startLevel();
+  });
+}
+function buyVIP(){
+  if(S.vip){ toast('👑 VIP уже активен'); return; }
+  spendCoins(PRICES.vip,'VIP: ∞ сердец, без рекламы',function(){
+    S.vip=true; sSet('retromatch_save',S);
+    drawLives(); toast('👑 VIP активирован: бесконечные сердца, без рекламы, пропуски бесплатно');
+    $('ovlLives').classList.remove('show');
+    if(!playing) startLevel();
+  });
+}
+function updateMonetButtons(){
+  ['bAd','bAd2'].forEach(function(id){ var b=$(id); if(b) b.style.display=S.vip?'none':''; });
+  var lbl = S.vip ? '⏭ Пропустить уровень (VIP)' : '⏭ Пропустить уровень — 3 голоса';
+  ['bSkip2','bSkipEnd'].forEach(function(id){ var b=$(id); if(b) b.textContent=lbl; });
+  var v=$('bVip'); if(v) v.style.display=S.vip?'none':'';
 }
 
 // вызов друга: VK share с фоллбеком
@@ -523,4 +570,3 @@ $('ovlStart').classList.add('show'); // показать стартовый эк
 </script>
 </body>
 </html>
-
