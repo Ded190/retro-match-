@@ -20,6 +20,7 @@
   .tile { display:flex; align-items:center; justify-content:center; font-size:min(7.5vw,34px); border-radius:9px;
           background:#2a2148; cursor:pointer; transition:transform .12s, opacity .18s; }
   .tile.sel { background:#4de07a44; outline:2px solid #4de07a; transform:scale(1.08); }
+  .tile.spec { box-shadow:inset 0 0 0 2px rgba(255,255,255,.6); }
   .tile.pop { transform:scale(0); opacity:0; }
   #btns { width:min(96vw,420px); display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
   button { flex:1; min-width:110px; padding:12px 6px; font-size:15px; border:0; border-radius:12px; cursor:pointer;
@@ -45,10 +46,24 @@
 #quote .qt{font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.55;margin-bottom:3px;}
 #quote .qa{opacity:.6;font-size:12px;margin-top:3px;}
 #wikiLink{display:block;margin:8px auto 0;font-size:13px;color:var(--acc);text-decoration:none;opacity:.85;}
+.spark{position:fixed;font-size:18px;pointer-events:none;z-index:8;animation:sparkUp .6s ease-out forwards;}
+@keyframes sparkUp{0%{opacity:1;transform:translate(0,0) scale(1);}
+  100%{opacity:0;transform:translate(var(--dx,0),-70px) scale(.35);}}
+.tile.boom{animation:boom .4s ease forwards;}
+@keyframes boom{0%{transform:scale(1);}
+  40%{transform:scale(1.3);filter:brightness(1.9);box-shadow:0 0 24px 8px var(--acc,#ffd54a);}
+  100%{transform:scale(0);opacity:0;}}
+#bigMsg{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);font-size:36px;font-weight:900;
+  color:#ffd54a;text-shadow:0 3px 10px #000,0 0 26px rgba(255,213,74,.65);pointer-events:none;opacity:0;z-index:7;}
+#bigMsg.go{animation:bigPop .85s ease-out forwards;}
+@keyframes bigPop{0%{opacity:0;transform:translate(-50%,-50%) scale(.3);}
+  25%{opacity:1;transform:translate(-50%,-50%) scale(1.3);}
+  60%{opacity:1;transform:translate(-50%,-50%) scale(1);}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.12);}}
 </style>
 </head>
 <body>
-<h1>🕹️ РЕТРО МАТЧ</h1>
+<h1>🕹️ РЕТРО МАЧ</h1>
 <div id="era">Уровень 1</div><button id="bMute" style="position:absolute;right:10px;top:8px;background:none;border:none;font-size:20px;cursor:pointer;opacity:.6">🎵</button>
 <div id="bar">
   <div class="box" id="scoreBox">0 / 500</div>
@@ -60,6 +75,7 @@
   <button id="bShare" class="green">⚔️ Вызвать друга</button>
   <button id="bAd" class="gold">📺 Реклама: +1 ❤️</button>
   <button id="bBuy">💜 Сердце за голоса</button>
+  <button id="bShop">🛒 Магазин</button>
 </div>
 <div id="toast"></div>
 <button id="dbg">🛠 debug</button>
@@ -67,7 +83,7 @@
 
 <div class="ovl" id="ovlStart">
   <div class="big">🕹️</div><h2>Ретро Матч</h2>
-  <p>Три в ряд: 100 уровней в 10 темах — наука и космос, еда, машины, музыка, спорт, мемы, праздники, техника, природа и великие умы. У каждой темы своя музыка, а за пройденный уровень — цитата, поговорка или факт. Свайпай фишку на соседнюю клетку (вверх/вниз/влево/вправо) или тапай по двум соседним. 3 в линию, 4 подряд — комбо, каскады дают множитель. Фон и фишки у каждого уровня свои!</p>
+  <p>Три в ряд: 100 уровней в 10 темах — наука и космос, еда, машины, музыка, спорт, мемы, праздники, техника, природа и великие умы. У каждой темы своя музыка, а за пройденный уровень — цитата, поговорка или факт. Свайпай фишку на соседнюю клетку (вверх/вниз/влево/вправо) или тапай по двум соседним. 3 в линию, 4 подряд — комбо, 5 подряд — радуга, уголок из линий — бомба! Каскады дают множитель.</p>
   <button id="bPlay" class="green" style="max-width:280px">Играть</button>
 </div>
 <div class="ovl" id="ovlEnd"><div class="big" id="endIcon">🏆</div><h2 id="endTitle"></h2><p id="endText"></p>
@@ -79,6 +95,13 @@
   <button id="bBuy2" style="max-width:280px">💜 Купить сердце — 2 голоса</button>
   <button id="bSkip2" style="max-width:280px">⏭ Пропустить уровень — 3 голоса</button>
   <button id="bVip" class="gold" style="max-width:280px">👑 VIP: ∞ сердец и без рекламы — 199</button>
+</div>
+<div class="ovl" id="ovlShop"><div class="big">🛒</div><h2>Магазин</h2>
+  <p>Оплата — голосами ВК или ОКами. Пока всё работает в режиме эмуляции: деньги не списываются.</p>
+  <button id="shHeart" style="max-width:300px">💜 Сердце — 2 голоса</button>
+  <button id="shSkip" style="max-width:300px">⏭ Пропуск уровня — 3 голоса</button>
+  <button id="shVip" class="gold" style="max-width:300px">👑 VIP: ∞ сердец и без рекламы — 199</button>
+  <button id="shClose" style="max-width:300px;opacity:.75">Закрыть</button>
 </div>
 
 
@@ -164,8 +187,8 @@ function toggleMute(){
 /* РЕТРО МАЧ: прототип три-в-ряд, один файл.
    Свап соседних, match 3+, комбо 4+, каскады с множителем,
    генерация без стартовых матчей, проверка ходов (reshuffle),
-   уровни-эпохи, таймер, 5 сердец с регеном 1 шт за 3 часа, сейф safeStore,
-   заглушки: rewarded-реклама, сердца и VIP за голоса ВК/ОКи, вызов друга. */
+   уровни-эпохи, таймер, 5 сердец с регеном 1 шт за 3 часа, сейв safeStore,
+   заглушки: rewarded-реклама, сердца за голоса ВК/ОКи, вызов друга. */
 
 var mem = {};
 function sGet(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:JSON.parse(v);}catch(e){ return (k in mem)?mem[k]:d; } }
@@ -206,6 +229,10 @@ function levelStyle(i){
 var S = sGet('retromatch_save', { lvl:0, lives:5, lastLife:Date.now(), record:0, vip:false });
 var N = 8;
 var grid = [];
+// спец-фишки: 🚀 сносит ряд, ⚡ сносит столбец, 💣 область 3×3, 🌈 все фишки одного цвета
+var spec = [];
+var SPEC_ICON = { h:'🚀', v:'⚡', b:'💣', r:'🌈' };
+var lastSwap = null;
 var sel = null;
 var busy = false;
 var timeLeft = 0, timerId = null, playing = false;
@@ -218,7 +245,7 @@ function rnd(n){ return Math.floor(Math.random()*n); }
 function fmt(ms){ var m=Math.floor(ms/3600000), s=Math.floor((ms%3600000)/60000);
   return m+' ч '+s+' мин'; }
 
-// жизни: максимум 5, реген 1 сердце за 3 часа
+// жизни: 5, реген 1 сердце за 3 часа
 var MAX_LIVES = 5;
 var LIFE_MS = 3*3600*1000;
 function refillLives(){
@@ -244,9 +271,10 @@ function fixStart(){
     while((x>=2&&grid[y][x-1]===t&&grid[y][x-2]===t)||(y>=2&&grid[y-1][x]===t&&grid[y-2][x]===t)) t=rnd(5);
     grid[y][x]=t;
   }
+  specReset();
 }
 function newGrid(){
-  grid=[];
+  grid=[]; specReset();
   for(var y=0;y<N;y++){ grid[y]=[];
     for(var x=0;x<N;x++) grid[y][x]=rnd(5);
   }
@@ -257,16 +285,25 @@ function newGrid(){
 // поиск ходов: перебор всех соседних свапов
 function matchAt(x,y){
   var t=grid[y][x];
+  if(t<0) return false; // радуга не матчится сама по себе
   var c=1,i;
   for(i=x-1;i>=0&&grid[y][i]===t;i--)c++;
   for(i=x+1;i<N&&grid[y][i]===t;i++)c++;
   if(c>=3) return true;
   c=1;
-  for(i=y-1;i>=0&&grid[i][x]===t;i++)c++;
+  for(i=y-1;i>=0&&grid[i][x]===t;i--)c++;
   for(i=y+1;i<N&&grid[i][x]===t;i++)c++;
   return c>=3;
 }
 function swapBack(x1,y1,x2,y2){ var t=grid[y1][x1]; grid[y1][x1]=grid[y2][x2]; grid[y2][x2]=t; }
+function swapAll(x1,y1,x2,y2){
+  swapBack(x1,y1,x2,y2);
+  var s=spec[y1][x1]; spec[y1][x1]=spec[y2][x2]; spec[y2][x2]=s;
+}
+function specReset(){
+  spec=[];
+  for(var y=0;y<N;y++){ spec[y]=[]; for(var x=0;x<N;x++) spec[y][x]=0; }
+}
 function findMove(){
   for(var y=0;y<N;y++) for(var x=0;x<N;x++){
     if(x<N-1){ swapBack(x,y,x+1,y);
@@ -278,6 +315,7 @@ function findMove(){
 }
 function shuffle(silent){
   var tries=0;
+  specReset();
   do{ for(var y=0;y<N;y++) for(var x=0;x<N;x++) grid[y][x]=rnd(5);
       fixStart(); tries++;
   } while(!findMove() && tries<50);
@@ -290,7 +328,8 @@ function draw(){
   var b=$('board'); b.innerHTML='';
   for(var y=0;y<N;y++) for(var x=0;x<N;x++){
     var d=document.createElement('div'); d.className='tile';
-    d.textContent=LEVELS[S.lvl].s[grid[y][x]];
+    if(spec[y][x]){ d.textContent=SPEC_ICON[spec[y][x]]; d.classList.add('spec'); }
+    else d.textContent=LEVELS[S.lvl].s[grid[y][x]];
     d.dataset.x=x; d.dataset.y=y; b.appendChild(d);
   }
   $('era').textContent=LEVELS[S.lvl].n;
@@ -306,13 +345,31 @@ function drawLives(){
   $('scoreBox').textContent=score+' / '+goalFor(S.lvl);
   updateMonetButtons();
 }
-function popCells(keys){
+function popCells(keys,uniq){
   var b=$('board');
-  keys.forEach(function(k){ var p=k.split(','); var el=b.children[(+p[1])*N+(+p[0])];
-    if(el) el.classList.add('pop'); });
-  return new Promise(function(res){ setTimeout(res,190); });
+  keys.forEach(function(k){
+    var p=k.split(','), runn=uniq?+(uniq[k]||0):3;
+    var el=b.children[(+p[1])*N+(+p[0])];
+    if(!el) return;
+    el.classList.add(runn>=4?'boom':'pop');
+    spark(el);
+  });
+  return new Promise(function(res){ setTimeout(res,240); });
 }
-
+function spark(el){
+  try{
+    var r=el.getBoundingClientRect();
+    for(var i=0;i<2;i++){
+      var s=document.createElement('div'); s.className='spark';
+      s.textContent=['✨','⭐','💫'][Math.floor(Math.random()*3)];
+      s.style.left=(r.left+r.width/2-9)+'px';
+      s.style.top=(r.top+r.height/2-9)+'px';
+      s.style.setProperty('--dx',(Math.random()*70-35).toFixed(0)+'px');
+      document.body.appendChild(s);
+      setTimeout(function(ev){ if(ev&&ev.parentNode) ev.parentNode.removeChild(ev); },650,s);
+    }
+  }catch(e){}
+}
 // игровой цикл: свап -> матч -> удаление -> гравитация -> каскады
 function tileFromEvent(e){
   var t=e.target;
@@ -357,38 +414,136 @@ $('board').addEventListener('pointerup',function(e){
 });
 function doSwap(x1,y1,x2,y2){
   busy=true;
-  swapBack(x1,y1,x2,y2); draw(); busy=false;
-  if(!matchAt(x1,y1)&&!matchAt(x2,y2)){
-    busy=true; swapBack(x1,y1,x2,y2); draw(); busy=false; return;
+  var sp1=spec[y1][x1], sp2=spec[y2][x2], c1=grid[y1][x1], c2=grid[y2][x2];
+  swapAll(x1,y1,x2,y2); draw();
+  if(sp1||sp2){ // свап спец-фишки: срабатывает даже без матча
+    var del={}, acts=[];
+    addDel(del,acts,x1,y1); addDel(del,acts,x2,y2);
+    if(sp1==='r'&&sp2==='r'){ for(var a=0;a<N;a++) for(var b=0;b<N;b++) addDel(del,acts,b,a); specReset(); }
+    else{
+      if(sp1==='r'){ spec[y2][x2]=0; specCells(x2,y2,'r',c2).forEach(function(cc){ addDel(del,acts,cc[0],cc[1]); }); }
+      if(sp2==='r'){ spec[y1][x1]=0; specCells(x1,y1,'r',c1).forEach(function(cc){ addDel(del,acts,cc[0],cc[1]); }); }
+    }
+    showBig((sp1==='r'||sp2==='r')?'🌈 РАДУГА!':(sp1==='b'||sp2==='b')?'💣 БУМ!':'💥 БАБАХ!');
+    lastSwap={x:x1,y:y1,x2:x2,y2:y2};
+    resolveAll(del,acts);
+    return;
   }
+  if(!matchAt(x1,y1)&&!matchAt(x2,y2)){
+    swapAll(x1,y1,x2,y2); draw(); busy=false; return;
+  }
+  lastSwap={x:x1,y:y1,x2:x2,y2:y2};
   resolveAll();
 }
-async function resolveAll(){
-  busy=true; var mult=1;
+// добавляем клетку к удалению; спец в ней — добавляем в очередь срабатываний
+function addDel(del,acts,x,y){
+  if(x<0||x>=N||y<0||y>=N) return 0;
+  var k=x+','+y;
+  if(del[k]) return 0;
+  del[k]=3;
+  if(spec[y][x]) acts.push(k);
+  return 1;
+}
+// клетки, которые сносит спец: 🚀 ряд, ⚡ столбец, 💣 3×3, 🌈 все цвета t
+function specCells(x,y,kind,color){
+  var out=[];
+  if(kind==='h'){ for(var i=0;i<N;i++) out.push([i,y]); }
+  else if(kind==='v'){ for(var j=0;j<N;j++) out.push([x,j]); }
+  else if(kind==='b'){
+    for(var yy=Math.max(0,y-1);yy<=Math.min(N-1,y+1);yy++)
+      for(var xx=Math.max(0,x-1);xx<=Math.min(N-1,x+1);xx++) out.push([xx,yy]);
+  } else if(kind==='r'){
+    var t=color; if(t==null||t<0) t=rnd(5);
+    for(var a=0;a<N;a++) for(var b=0;b<N;b++) if(grid[a][b]===t) out.push([b,a]);
+  }
+  return out;
+}
+// цепная обработка активаций: спец внутри зоны сносит следующий спец
+function applyActs(del,acts){
+  var n=0;
+  while(acts.length){
+    var k=acts.shift(); var p=k.split(','), x=+p[0], y=+p[1];
+    var sp=spec[y][x];
+    if(!sp) continue;
+    spec[y][x]=0;
+    var color=(sp==='r')?grid[y][x]:null;
+    specCells(x,y,sp,color).forEach(function(cc){ n+=addDel(del,acts,cc[0],cc[1]); });
+  }
+  return n;
+}
+async function resolveAll(del0,a0){
+  busy=true; var mult=1; var pending=del0; var pendActs=a0||[];
   while(true){
-    var cells=[];
-    for(var y=0;y<N;y++){ var run=1;
-      for(var x=1;x<=N;x++){ if(x<N&&grid[y][x]===grid[y][x-1]) run++;
-        else { if(run>=3) for(var k=x-run;k<x;k++) cells.push(k+','+y+':'+run); run=1; } } }
-    for(var cx=0;cx<N;cx++){ var run2=1;
-      for(var yy=1;yy<=N;yy++){ if(yy<N&&grid[yy][cx]===grid[yy-1][cx]) run2++;
-        else { if(run2>=3) for(var k2=yy-run2;k2<yy;k2++) cells.push(cx+','+k2+':'+run2); run2=1; } } }
-    if(!cells.length) break;
-    var uniq={}, pts=0;
-    cells.forEach(function(c){ var kv=c.split(':'), k=kv[0], runn=+kv[1];
-      if(!uniq[k]){ uniq[k]=runn; pts += (runn>=4?30:10)*mult; } });
-    score += pts; drawLives();
-    if(mult>1) showCombo('x'+mult+' 🔥');
-    await popCells(Object.keys(uniq));
-    Object.keys(uniq).forEach(function(k){ var p=k.split(','); grid[+p[1]][+p[0]]=-1; });
+    var del={}, uniq={}, acts=[], made={}, maxRun=0, wasPending=false;
+    if(pending){ del=pending; acts=pendActs; pending=null; wasPending=true; }
+    else{
+      // сбор линий: по одной на непрерывный матч (а не на клетку)
+      var lines=[];
+      for(var y=0;y<N;y++){ var run=1;
+        for(var x=1;x<=N;x++){ if(x<N&&grid[y][x]===grid[y][x-1]&&grid[y][x]>=0) run++;
+          else { if(run>=3&&grid[y][x-1]>=0) lines.push({x0:x-run,y:y,run:run,dir:'h'}); run=1; } } }
+      for(var cx=0;cx<N;cx++){ var run2=1;
+        for(var yy=1;yy<=N;yy++){ if(yy<N&&grid[yy][cx]===grid[yy-1][cx]&&grid[yy][cx]>=0) run2++;
+          else { if(run2>=3&&grid[yy-1][cx]>=0) lines.push({x0:cx,y0:yy-run2,run:run2,dir:'v'}); run2=1; } } }
+      if(!lines.length) break;
+      var hits={};
+      lines.forEach(function(L){
+        for(var i=0;i<L.run;i++){
+          var x=(L.dir==='h'?L.x0+i:L.x0), yy2=(L.dir==='h'?L.y:L.y0+i);
+          var k=x+','+yy2;
+          uniq[k]=L.run; hits[k]=(hits[k]||0)+1;
+        }
+      });
+      // куда ставить спец: клетка свапа, если она в матче, иначе центр линии
+      lines.forEach(function(L){
+        if(L.run===4||L.run>=5){
+          var kc=null;
+          for(var i=0;i<L.run;i++){
+            var x=(L.dir==='h'?L.x0+i:L.x0), yy2=(L.dir==='h'?L.y:L.y0+i);
+            if(lastSwap&&((x===lastSwap.x&&yy2===lastSwap.y)||(x===lastSwap.x2&&yy2===lastSwap.y2))){ kc=x+','+yy2; break; }
+          }
+          if(!kc){ var m=(L.dir==='h')?[L.x0+(L.run>>1),L.y]:[L.x0,L.y0+(L.run>>1)]; kc=m[0]+','+m[1]; }
+          made[kc]= L.run>=5 ? 'r' : (L.dir==='h'?'h':'v');
+        }
+      });
+      // пересечение горизонтали и вертикали -> 💣 (клетка не удаляется)
+      Object.keys(hits).forEach(function(k){
+        if(hits[k]>1){ uniq[k]=99; if(made[k]!=='r') made[k]='b'; }
+      });
+      var pts=0;
+      Object.keys(uniq).forEach(function(k){
+        if(made[k]) return;
+        var p=k.split(',');
+        if(spec[+p[1]][+p[0]]) acts.push(k);
+        del[k]=uniq[k];
+        pts+=(uniq[k]>=4?30:10)*mult;
+        if(uniq[k]>maxRun) maxRun=uniq[k];
+      });
+      score+=pts;
+      var ks=Object.keys(made);
+      if(ks.some(function(k){return made[k]==='r';})) showBig('🌈 РАДУГА!');
+      else if(ks.some(function(k){return made[k]==='b';})) showBig('💣 БОМБА!');
+      else if(ks.some(function(k){return made[k]==='h'||made[k]==='v';})) showBig('🚀 РАКЕТА!');
+      else if(maxRun>=4) showBig(maxRun>=6?'👑 ЭПИК!':maxRun>=5?'🌟 МЕГА!':'💥 СУПЕР!');
+      else if(mult>=3) showBig('🔥 КОМБО x'+mult);
+      if(mult>1) showCombo('x'+mult+' 🔥');
+    }
+    if(!Object.keys(del).length) continue;
+    drawLives();
+    if(wasPending) score+=Object.keys(del).length*10*mult; // очки за снос от спец
+    score+=applyActs(del,acts)*10*mult; drawLives();
+    await popCells(Object.keys(del), uniq);
+    Object.keys(del).forEach(function(k){
+      var p=k.split(','); grid[+p[1]][+p[0]]=-1; spec[+p[1]][+p[0]]=0;
+    });
     for(var x2=0;x2<N;x2++){
       var w=N-1;
-      for(var y3=N-1;y3>=0;y3--) if(grid[y3][x2]!==-1){ grid[w][x2]=grid[y3][x2]; w--; }
-      for(var yw=w;yw>=0;yw--) grid[yw][x2]=rnd(5);
+      for(var y3=N-1;y3>=0;y3--) if(grid[y3][x2]!==-1){ grid[w][x2]=grid[y3][x2]; spec[w][x2]=spec[y3][x2]; w--; }
+      for(var yw=w;yw>=0;yw--){ grid[yw][x2]=rnd(5); spec[yw][x2]=0; }
     }
     draw(); mult++;
   }
-  busy=false;
+  busy=false; lastSwap=null;
   if(score>=goalFor(S.lvl)){ win(); return; }
   if(!findMove()) shuffle(false);
 }
@@ -397,6 +552,12 @@ function showCombo(txt){
   var b=$('board').getBoundingClientRect();
   c.style.left=(b.left+b.width/2-30)+'px'; c.style.top=(b.top+40)+'px';
   setTimeout(function(){ c.style.opacity=0; c.style.transform='translateY(-24px)'; },450);
+}
+// большая надпись: СУПЕР/МЕГА/ЭПИК за 4/5/6 подряд и КОМБО за каскады
+function showBig(txt){
+  var e=$('bigMsg'); if(!e) return;
+  e.textContent=txt; e.classList.remove('go'); void e.offsetWidth; e.classList.add('go');
+  try{ if(AC) beep(700+Math.random()*300, AC.currentTime, 0.13, 'square', 0.05); }catch(x){}
 }
 
 // таймер уровня
@@ -481,6 +642,11 @@ $('bBuy').onclick=$('bBuy2').onclick=function(){ buyHeart(); };
 $('bSkip2').onclick=function(){ buySkip(); };
 $('bSkipEnd').onclick=function(){ buySkip(); };
 $('bVip').onclick=function(){ buyVIP(); };
+$('bShop').onclick=function(){ showShop(); };
+$('shHeart').onclick=function(){ buyHeart(); };
+$('shSkip').onclick=function(){ buySkip(); };
+$('shVip').onclick=function(){ buyVIP(); };
+$('shClose').onclick=function(){ var o=$('ovlShop'); if(o) o.classList.remove('show'); };
 
 // монетизация: цены в голосах ВК / ОКах. Пока эмуляция, релизные вызовы — в комментариях.
 var PRICES={ heart:2, skip:3, vip:199 };
@@ -509,11 +675,11 @@ function buyHeart(){
   spendCoins(PRICES.heart,'+1 сердце',function(){
     S.lives=Math.min(MAX_LIVES,S.lives+1); S.lastLife=Date.now(); sSet('retromatch_save',S);
     drawLives(); toast('Сердце куплено!');
-    $('ovlLives').classList.remove('show');
+    ['ovlLives','ovlShop'].forEach(function(id){ var o=$(id); if(o) o.classList.remove('show'); });
   });
 }
 function buySkip(){
-  $('ovlLives').classList.remove('show'); $('ovlEnd').classList.remove('show');
+  ['ovlLives','ovlEnd','ovlShop'].forEach(function(id){ var o=$(id); if(o) o.classList.remove('show'); });
   if(S.vip){
     S.lvl=(S.lvl+1)%LEVELS.length; sSet('retromatch_save',S); startLevel(); return;
   }
@@ -526,16 +692,18 @@ function buyVIP(){
   spendCoins(PRICES.vip,'VIP: ∞ сердец, без рекламы',function(){
     S.vip=true; sSet('retromatch_save',S);
     drawLives(); toast('👑 VIP активирован: бесконечные сердца, без рекламы, пропуски бесплатно');
-    $('ovlLives').classList.remove('show');
+    ['ovlLives','ovlShop'].forEach(function(id){ var o=$(id); if(o) o.classList.remove('show'); });
     if(!playing) startLevel();
   });
 }
 function updateMonetButtons(){
-  ['bAd','bAd2'].forEach(function(id){ var b=$(id); if(b) b.style.display=S.vip?'none':''; });
+  ['bAd','bAd2','shHeart','shVip'].forEach(function(id){ var b=$(id); if(b) b.style.display=S.vip?'none':''; });
   var lbl = S.vip ? '⏭ Пропустить уровень (VIP)' : '⏭ Пропустить уровень — 3 голоса';
-  ['bSkip2','bSkipEnd'].forEach(function(id){ var b=$(id); if(b) b.textContent=lbl; });
+  ['bSkip2','bSkipEnd','shSkip'].forEach(function(id){ var b=$(id); if(b) b.textContent=lbl; });
   var v=$('bVip'); if(v) v.style.display=S.vip?'none':'';
 }
+// магазин: главный экран покупок (кнопка 🛒 Магазин)
+function showShop(){ refillLives(); var o=$('ovlShop'); if(o) o.classList.add('show'); updateMonetButtons(); }
 
 // вызов друга: VK share с фоллбеком
 var isVK = false;
@@ -570,3 +738,4 @@ $('ovlStart').classList.add('show'); // показать стартовый эк
 </script>
 </body>
 </html>
+
