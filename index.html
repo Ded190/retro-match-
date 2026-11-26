@@ -8,7 +8,6 @@
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { font-family:'Segoe UI',Arial,sans-serif; background:#141022; color:#f0eaff; min-height:100vh;
          display:flex; flex-direction:column; align-items:center; user-select:none; }
-    background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,60,160,.07) 3px 4px); }
   h1 { font-size:22px; margin:10px 0 2px; letter-spacing:1px; color:var(--acc,#ffd54a); text-shadow:0 2px 0 rgba(0,0,0,.55); }
   #era { font-size:11px; color:rgba(255,255,255,.55); margin-bottom:6px; letter-spacing:1.5px; text-transform:uppercase; }
   #bar { width:min(96vw,420px); display:flex; gap:8px; align-items:center; margin:2px 0 8px; font-size:14px; }
@@ -68,10 +67,11 @@
 
 <div class="ovl" id="ovlStart">
   <div class="big">🕹️</div><h2>Ретро Матч</h2>
-  <p>Три в ряд: 100 уровней в 10 темах, у каждой — своя музыка и цитаты после победы.  — эпохи, мемы, космонавты, наука, еда, машины, спорт и праздники. Свайпай фишку на соседнюю клетку (вверх/вниз/влево/вправо) или тапай по двум соседним. 3 в линию, 4 подряд — комбо, каскады дают множитель. Фон и фишки у каждого уровня свои!</p>
+  <p>Три в ряд: 100 уровней в 10 темах — наука и космос, еда, машины, музыка, спорт, мемы, праздники, техника, природа и великие умы. У каждой темы своя музыка, а за пройденный уровень — цитата, поговорка или факт. Свайпай фишку на соседнюю клетку (вверх/вниз/влево/вправо) или тапай по двум соседним. 3 в линию, 4 подряд — комбо, каскады дают множитель. Фон и фишки у каждого уровня свои!</p>
   <button id="bPlay" class="green" style="max-width:280px">Играть</button>
 </div>
 <div class="ovl" id="ovlEnd"><div class="big" id="endIcon">🏆</div><h2 id="endTitle"></h2><p id="endText"></p>
+  <div id="quote"></div><a id="wikiLink" href="#" target="_blank" rel="noopener" style="display:none">Подробнее на Википедии →</a>
   <button id="bNext" class="green" style="max-width:280px">Дальше</button></div>
 <div class="ovl" id="ovlLives"><div class="big">💔</div><h2>Жизни кончились</h2>
   <p id="waitText"></p>
@@ -162,7 +162,7 @@ function toggleMute(){
 /* РЕТРО МАЧ: прототип три-в-ряд, один файл.
    Свап соседних, match 3+, комбо 4+, каскады с множителем,
    генерация без стартовых матчей, проверка ходов (reshuffle),
-   уровни-эпохи, таймер, 3 жизни с регеном 12 часов, сейф safeStore,
+   уровни-эпохи, таймер, 5 сердец с регеном 1 шт за 3 часа, сейф safeStore,
    заглушки: rewarded-реклама, сердца за голоса ВК/ОКи, вызов друга. */
 
 var mem = {};
@@ -196,12 +196,12 @@ function levelStyle(i){
   var L=LEVELS[i], h=(L.h+(i*11)%30)%360, h2=(h+35)%360;
   var l1=15-(i%6), l2=7+(i%4);
   var pat = PATTERNS[i%PATTERNS.length].replace(/HUE/g,h).replace(/H2/g,h2).replace(/L2/g,l2).replace(/L(?!2)/g,l1);
-  document.body.style.setProperty('--acc','hsl('+h+',85%,62%)');
+  document.body.style.setProperty('--acc','hsl('+h+',70%,60%)');
   document.body.style.background=pat;
   var b=$('board'); if(b) b.style.background='hsl('+h+',32%,19%)';
 }
 
-var S = sGet('retromatch_save', { lvl:0, lives:3, lastLife:Date.now(), record:0 });
+var S = sGet('retromatch_save', { lvl:0, lives:5, lastLife:Date.now(), record:0 });
 var N = 8;
 var grid = [];
 var sel = null;
@@ -216,22 +216,23 @@ function rnd(n){ return Math.floor(Math.random()*n); }
 function fmt(ms){ var m=Math.floor(ms/3600000), s=Math.floor((ms%3600000)/60000);
   return m+' ч '+s+' мин'; }
 
-// жизни: 3, реген каждые 12 часов
-var LIFE_MS = 12*3600*1000;
+// жизни: максимум 5, реген 1 сердце за 3 часа
+var MAX_LIVES = 5;
+var LIFE_MS = 3*3600*1000;
 function refillLives(){
   var now = Date.now();
-  if(S.lives>=3){ S.lastLife=now; sSet('retromatch_save',S); return; }
+  if(S.lives>=MAX_LIVES){ S.lastLife=now; sSet('retromatch_save',S); return; }
   var gained = 0;
-  while(S.lives<3 && now-S.lastLife>=LIFE_MS){ S.lives++; gained++; S.lastLife+=LIFE_MS; }
+  while(S.lives<MAX_LIVES && now-S.lastLife>=LIFE_MS){ S.lives++; gained++; S.lastLife+=LIFE_MS; }
   if(gained) toast('Восстановились жизни: +'+gained);
-  if(S.lives>=3) S.lastLife=now;
+  if(S.lives>=MAX_LIVES) S.lastLife=now;
   sSet('retromatch_save',S);
 }
 function spendLife(){
-  if(S.lives>=3){ S.lastLife=Date.now(); } // реген-таймер стартует с момента траты
+  if(S.lives>=MAX_LIVES){ S.lastLife=Date.now(); } // реген-таймер стартует с момента траты
   S.lives=Math.max(0,S.lives-1); sSet('retromatch_save',S); drawLives();
 }
-function livesEta(){ if(S.lives>=3) return 0; return LIFE_MS-(Date.now()-S.lastLife); }
+function livesEta(){ if(S.lives>=MAX_LIVES) return 0; return LIFE_MS-(Date.now()-S.lastLife); }
 
 // генерация поля без стартовых матчей
 function fixStart(){
@@ -258,7 +259,7 @@ function matchAt(x,y){
   for(i=x+1;i<N&&grid[y][i]===t;i++)c++;
   if(c>=3) return true;
   c=1;
-  for(i=y-1;i>=0&&grid[i][x]===t;i--)c++;
+  for(i=y-1;i>=0&&grid[i][x]===t;i++)c++;
   for(i=y+1;i<N&&grid[i][x]===t;i++)c++;
   return c>=3;
 }
@@ -282,7 +283,7 @@ function shuffle(silent){
 
 // отрисовка
 function draw(){
-  levelStyle(S.lvl);
+  levelStyle(S.lvl); levelImage(S.lvl);
   var b=$('board'); b.innerHTML='';
   for(var y=0;y<N;y++) for(var x=0;x<N;x++){
     var d=document.createElement('div'); d.className='tile';
@@ -294,7 +295,7 @@ function draw(){
 }
 function drawLives(){
   var bm=document.getElementById('bMute'); if(bm) bm.textContent=S.mute?'🔇':'🎵';
-  var h=''; for(var i=0;i<3;i++) h+='<span class="lv'+(i<S.lives?' on':'')+'">❤️</span>';
+  var h=''; for(var i=0;i<MAX_LIVES;i++) h+='<span class="lv'+(i<S.lives?' on':'')+'">❤️</span>';
   $('livesBox').innerHTML=h;
   $('scoreBox').textContent=score+' / '+goalFor(S.lvl);
 }
@@ -403,6 +404,18 @@ function startLevel(){
     if(timeLeft<=0){ clearInterval(timerId); playing=false; spendLife(); lose(); }
   },1000);
 }
+
+// картинки уровня: images/<тема>/<номер>.png — если файла нет, остаётся градиент
+function levelImage(i){
+  var L=LEVELS[i]; if(!L) return;
+  var b=$('board'); if(!b) return;
+  try{
+    var im=new Image();
+    im.onload=function(){ b.style.backgroundImage="url('images/"+L.t+"/"+(i+1)+".png')"; };
+    im.onerror=function(){ b.style.backgroundImage='none'; };
+    im.src='images/'+L.t+'/'+(i+1)+'.png';
+  }catch(e){}
+}
 function showQuote(i){
   var L=LEVELS[i]; if(!L) return;
   var pack=QUOTES_STORE[L.t]||[];
@@ -465,13 +478,13 @@ function grantReward(){
     toast('Реклама будет доступна через '+fmt(30*60*1000-(Date.now()-last))); return;
   }
   sSet('rm_ad_ts',Date.now());
-  S.lives=Math.min(3,S.lives+1); S.lastLife=Date.now(); sSet('retromatch_save',S);
+  S.lives=Math.min(MAX_LIVES,S.lives+1); S.lastLife=Date.now(); sSet('retromatch_save',S);
   drawLives(); toast('+1 сердце за просмотр рекламы (эмуляция)');
   $('ovlLives').classList.remove('show');
 }
 function buyHeart(){
   // РЕЛИЗ: VK — VKWebAppShowOrderBox (голоса); ОК — FAPI.UI.showPayment (ОКи).
-  if(S.lives>=3){ toast('Все сердца на месте'); return; }
+  if(S.lives>=MAX_LIVES){ toast('Все сердца на месте'); return; }
   S.lives++; S.lastLife=Date.now(); sSet('retromatch_save',S);
   drawLives(); toast('Сердце куплено! (эмуляция — в релизе списание голосов/ОКов)');
   $('ovlLives').classList.remove('show');
@@ -498,7 +511,7 @@ $('bShare').onclick=function(){
 
 // debug-кнопка (уберём в релизе)
 $('dbg').onclick=function(){
-  S.lives=3; S.lastLife=Date.now(); sSet('retromatch_save',S);
+  S.lives=MAX_LIVES; S.lastLife=Date.now(); sSet('retromatch_save',S);
   timeLeft=Math.max(timeLeft,60); drawLives(); toast('debug: жизни заполнены, время +60с');
 };
 
@@ -506,7 +519,8 @@ $('dbg').onclick=function(){
 $('bPlay').onclick=function(){ $('ovlStart').classList.remove('show'); refillLives(); showLivesOvl(); };
 newGrid(); draw(); // поле видно уже под стартовым экраном
 refillLives(); drawLives();
-$('ovlStart').classList.add('show'); // показать стартовый экран (раньше не показывался — поле казалось пустым)
+$('ovlStart').classList.add('show'); // показать стартовый экран
 </script>
 </body>
 </html>
+
