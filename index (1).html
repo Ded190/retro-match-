@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Ретро Матч — три в ряд</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:'Segoe UI',Arial,sans-serif; background:#141022; color:#f0eaff; min-height:100vh;
+         display:flex; flex-direction:column; align-items:center; user-select:none; }
+    background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,60,160,.07) 3px 4px); }
+  h1 { font-size:22px; margin:10px 0 2px; letter-spacing:1px; color:var(--acc,#ffd54a); text-shadow:0 2px 0 rgba(0,0,0,.55); }
+  #era { font-size:11px; color:rgba(255,255,255,.55); margin-bottom:6px; letter-spacing:1.5px; text-transform:uppercase; }
+  #bar { width:min(96vw,420px); display:flex; gap:8px; align-items:center; margin:2px 0 8px; font-size:14px; }
+  #bar .box { background:#241b3f; border:1px solid #3d2f66; border-radius:10px; padding:6px 10px; white-space:nowrap; }
+  #timeWrap { flex:1; height:12px; background:#241b3f; border:1px solid #3d2f66; border-radius:8px; overflow:hidden; }
+  #timeFill { height:100%; width:100%; background:linear-gradient(90deg,#4de07a,#ffd54a); transition:width .3s; }
+  #timeFill.low { background:linear-gradient(90deg,#ff5b5b,#ff9a4a); }
+  #board { width:min(96vw,420px); aspect-ratio:1; background:#1c1530; border:2px solid var(--acc,#3d2f66); border-radius:12px;
+           display:grid; grid-template-columns:repeat(8,1fr); gap:3px; padding:5px; touch-action:none; }
+  .tile { display:flex; align-items:center; justify-content:center; font-size:min(7.5vw,34px); border-radius:9px;
+          background:#2a2148; cursor:pointer; transition:transform .12s, opacity .18s; }
+  .tile.sel { background:#4de07a44; outline:2px solid #4de07a; transform:scale(1.08); }
+  .tile.pop { transform:scale(0); opacity:0; }
+  #btns { width:min(96vw,420px); display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  button { flex:1; min-width:110px; padding:12px 6px; font-size:15px; border:0; border-radius:12px; cursor:pointer;
+           background:#3d2f66; color:#fff; font-weight:600; }
+  button.gold { background:#8a6d1d; }
+  button.green { background:#2f6648; }
+  button:active { filter:brightness(1.25); }
+  #toast { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:#2a2148; color:#fff;
+           border:1px solid #4de07a; padding:10px 16px; border-radius:12px; font-size:14px; opacity:0;
+           pointer-events:none; transition:opacity .3s; max-width:90vw; text-align:center; z-index:9; }
+  .ovl { position:fixed; inset:0; background:#141022ee; display:none; flex-direction:column; align-items:center;
+         justify-content:center; padding:20px; text-align:center; z-index:5; gap:12px; }
+  .ovl.show { display:flex; }
+  .ovl h2 { color:#ffd54a; font-size:24px; }
+  .ovl p { color:#c9bfe8; font-size:15px; max-width:420px; line-height:1.5; }
+  .ovl .big { font-size:44px; }
+  #dbg { position:fixed; right:8px; bottom:8px; font-size:11px; padding:6px 10px; background:#333; opacity:.55; }
+  #combo { position:fixed; font-size:26px; font-weight:800; color:#ffd54a; text-shadow:0 2px 6px #000;
+           pointer-events:none; opacity:0; transition:opacity .2s, transform .5s; z-index:4; }
+#quote{max-width:340px;margin:10px auto 2px;padding:10px 12px;font-size:13px;line-height:1.45;
+  color:#e8e4f5;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;backdrop-filter:blur(4px);text-align:left;}
+#quote .qt{font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.55;margin-bottom:3px;}
+#quote .qa{opacity:.6;font-size:12px;margin-top:3px;}
+#wikiLink{display:block;margin:8px auto 0;font-size:13px;color:var(--acc);text-decoration:none;opacity:.85;}
+</style>
+</head>
+<body>
+<h1>🕹️ РЕТРО МАТЧ</h1>
+<div id="era">Уровень 1</div><button id="bMute" style="position:absolute;right:10px;top:8px;background:none;border:none;font-size:20px;cursor:pointer;opacity:.6">🎵</button>
+<div id="bar">
+  <div class="box" id="scoreBox">0 / 500</div>
+  <div id="timeWrap"><div id="timeFill"></div></div>
+  <div class="box" id="livesBox">❤️❤️❤️</div>
+</div>
+<div id="board"></div>
+<div id="btns">
+  <button id="bShare" class="green">⚔️ Вызвать друга</button>
+  <button id="bAd" class="gold">📺 Реклама: +1 ❤️</button>
+  <button id="bBuy">💜 Сердце за голоса</button>
+</div>
+<div id="toast"></div>
+<button id="dbg">🛠 debug</button>
+<div id="combo"></div>
+
+<div class="ovl" id="ovlStart">
+  <div class="big">🕹️</div><h2>Ретро Матч</h2>
+  <p>Три в ряд: 100 уровней в 10 темах, у каждой — своя музыка и цитаты после победы.  — эпохи, мемы, космонавты, наука, еда, машины, спорт и праздники. Свайпай фишку на соседнюю клетку (вверх/вниз/влево/вправо) или тапай по двум соседним. 3 в линию, 4 подряд — комбо, каскады дают множитель. Фон и фишки у каждого уровня свои!</p>
+  <button id="bPlay" class="green" style="max-width:280px">Играть</button>
+</div>
+<div class="ovl" id="ovlEnd"><div class="big" id="endIcon">🏆</div><h2 id="endTitle"></h2><p id="endText"></p>
+  <button id="bNext" class="green" style="max-width:280px">Дальше</button></div>
+<div class="ovl" id="ovlLives"><div class="big">💔</div><h2>Жизни кончились</h2>
+  <p id="waitText"></p>
+  <button id="bAd2" class="gold" style="max-width:280px">📺 Посмотреть рекламу: +1 ❤️</button>
+  <button id="bBuy2" style="max-width:280px">💜 Купить сердце за голоса</button>
+</div>
+
+
+<script>var LEVELS_LOAD=[];var QUOTES_STORE={};
+// ===== фоновая музыка: чиптюн-секвенсор прямо в коде =====
+var THEME_SOUND={
+ science:{bpm:96,wave:'triangle',root:220,scale:[0,3,5,7,10]},
+ food:{bpm:108,wave:'triangle',root:262,scale:[0,2,4,7,9]},
+ cars:{bpm:120,wave:'square',root:196,scale:[0,2,3,7,9]},
+ music:{bpm:128,wave:'square',root:294,scale:[0,3,5,7,10]},
+ sport:{bpm:140,wave:'square',root:330,scale:[0,2,4,7,9]},
+ memes:{bpm:126,wave:'sawtooth',root:247,scale:[0,2,3,5,7]},
+ holidays:{bpm:112,wave:'triangle',root:262,scale:[0,2,4,5,9]},
+ tech:{bpm:104,wave:'square',root:233,scale:[0,1,4,6,8]},
+ nature:{bpm:88,wave:'sine',root:220,scale:[0,2,4,7,11]},
+ minds:{bpm:84,wave:'triangle',root:247,scale:[0,2,3,7,8]}
+};
+var AC=null, musTimer=null, musCur=null;
+function beep(freq,t0,dur,type,vol){
+  if(!AC) return;
+  var o=AC.createOscillator(), g=AC.createGain();
+  o.type=type; o.frequency.value=freq;
+  g.gain.setValueAtTime(0,t0);
+  g.gain.linearRampToValueAtTime(vol,t0+0.01);
+  g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+  o.connect(g); g.connect(AC.destination);
+  o.start(t0); o.stop(t0+dur+0.02);
+}
+function playLoop(slug){
+  if(S.mute) return;
+  var cfg=THEME_SOUND[slug]||THEME_SOUND.nature;
+  if(musCur===slug && musTimer) return;
+  stopLoop();
+  musCur=slug;
+  try{
+    if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended') AC.resume();
+  }catch(e){ AC=null; return; }
+  var step=0, stepMs=60000/cfg.bpm/2;
+  function tick(){
+    if(!AC||S.mute){ musTimer=setTimeout(tick,stepMs); return; }
+    var t=AC.currentTime, sc=cfg.scale;
+    if(step%2===0){
+      var n=sc[Math.floor(Math.random()*sc.length)]+((step%16===0)?12:0);
+      beep(cfg.root*Math.pow(2,n/12),t,0.12,cfg.wave,0.045);
+    }
+    if(step%8===0) beep(cfg.root/2,t,0.2,'triangle',0.06);
+    if(step%4===2) beep(6000,t,0.03,'square',0.012);
+    step=(step+1)%32;
+    musTimer=setTimeout(tick,stepMs);
+  }
+  tick();
+}
+function stopLoop(){ if(musTimer){ clearTimeout(musTimer); musTimer=null; } musCur=null; }
+function toggleMute(){
+  S.mute=!S.mute; sSet('retromatch_save',S);
+  drawLives();
+  if(S.mute) stopLoop(); else if(playing) playLoop(LEVELS[S.lvl].t);
+}
+</script>
+<script src="levels/science.js"></script>
+<script src="levels/food.js"></script>
+<script src="levels/cars.js"></script>
+<script src="levels/music.js"></script>
+<script src="levels/sport.js"></script>
+<script src="levels/memes.js"></script>
+<script src="levels/holidays.js"></script>
+<script src="levels/tech.js"></script>
+<script src="levels/nature.js"></script>
+<script src="levels/minds.js"></script>
+<script src="quotes/science.js"></script>
+<script src="quotes/food.js"></script>
+<script src="quotes/cars.js"></script>
+<script src="quotes/music.js"></script>
+<script src="quotes/sport.js"></script>
+<script src="quotes/memes.js"></script>
+<script src="quotes/holidays.js"></script>
+<script src="quotes/tech.js"></script>
+<script src="quotes/nature.js"></script>
+<script src="quotes/minds.js"></script>
+<script>
+'use strict';
+/* РЕТРО МАЧ: прототип три-в-ряд, один файл.
+   Свап соседних, match 3+, комбо 4+, каскады с множителем,
+   генерация без стартовых матчей, проверка ходов (reshuffle),
+   уровни-эпохи, таймер, 3 жизни с регеном 12 часов, сейф safeStore,
+   заглушки: rewarded-реклама, сердца за голоса ВК/ОКи, вызов друга. */
+
+var mem = {};
+function sGet(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:JSON.parse(v);}catch(e){ return (k in mem)?mem[k]:d; } }
+function sSet(k,v){ mem[k]=v; try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+
+var THEME_ORDER=['science','food','cars','music','sport','memes','holidays','tech','nature','minds'];
+var THEMES={science:'Наука и космос',food:'Еда',cars:'Машины',music:'Музыка',sport:'Спорт',memes:'Мемы и поп-культура',holidays:'Праздники',tech:'Техника и гаджеты',nature:'Природа и животные',minds:'Великие умы'};
+var LEVELS=[];
+THEME_ORDER.forEach(function(k){
+  var pack=null;
+  LEVELS_LOAD.forEach(function(o){ if(o.t===k) pack=o.p; });
+  if(!pack){ console.log('нет файла темы: '+k); pack=[]; }
+  pack.forEach(function(l){ l.t=k; LEVELS.push(l); });
+});
+
+// цели и время по номеру уровня: цель растёт, время чуть падает
+function goalFor(i){ return 900 + 9*i; }
+function timeFor(i){ return 90 - Math.floor(i/6); }
+
+// фоны уровней: у каждого свой оттенок и узор — не повторяются
+var PATTERNS = [
+ 'repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 2px,transparent 2px 4px),linear-gradient(180deg,hsl(HUE,30%,L%),hsl(H2,32%,L2%))',
+ 'linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px) 0 0/28px 28px,linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px) 0 0/28px 28px,linear-gradient(180deg,hsl(HUE,28%,L%),hsl(H2,32%,L2%))',
+ 'radial-gradient(rgba(255,255,255,.08) 1.5px,transparent 2.5px) 0 0/26px 26px,linear-gradient(180deg,hsl(HUE,31%,L%),hsl(H2,28%,L2%))',
+ 'repeating-linear-gradient(45deg,rgba(255,255,255,.045) 0 10px,transparent 10px 22px),linear-gradient(180deg,hsl(HUE,30%,L%),hsl(H2,32%,L2%))',
+ 'radial-gradient(circle at 25% 20%,rgba(255,255,255,.10),transparent 42%),radial-gradient(circle at 78% 72%,rgba(0,0,0,.35),transparent 48%),linear-gradient(180deg,hsl(HUE,31%,L%),hsl(H2,30%,L2%))',
+ 'repeating-linear-gradient(-45deg,rgba(255,255,255,.04) 0 16px,transparent 16px 32px),linear-gradient(180deg,hsl(HUE,28%,L%),hsl(H2,32%,L2%))'
+];
+function levelStyle(i){
+  var L=LEVELS[i], h=(L.h+(i*11)%30)%360, h2=(h+35)%360;
+  var l1=15-(i%6), l2=7+(i%4);
+  var pat = PATTERNS[i%PATTERNS.length].replace(/HUE/g,h).replace(/H2/g,h2).replace(/L2/g,l2).replace(/L(?!2)/g,l1);
+  document.body.style.setProperty('--acc','hsl('+h+',85%,62%)');
+  document.body.style.background=pat;
+  var b=$('board'); if(b) b.style.background='hsl('+h+',32%,19%)';
+}
+
+var S = sGet('retromatch_save', { lvl:0, lives:3, lastLife:Date.now(), record:0 });
+var N = 8;
+var grid = [];
+var sel = null;
+var busy = false;
+var timeLeft = 0, timerId = null, playing = false;
+var score = 0;
+
+function $(id){ return document.getElementById(id); }
+function toast(msg,ms){ var t=$('toast'); t.textContent=msg; t.style.opacity=1;
+  clearTimeout(t._h); t._h=setTimeout(function(){ t.style.opacity=0; }, ms||2200); }
+function rnd(n){ return Math.floor(Math.random()*n); }
+function fmt(ms){ var m=Math.floor(ms/3600000), s=Math.floor((ms%3600000)/60000);
+  return m+' ч '+s+' мин'; }
+
+// жизни: 3, реген каждые 12 часов
+var LIFE_MS = 12*3600*1000;
+function refillLives(){
+  var now = Date.now();
+  if(S.lives>=3){ S.lastLife=now; sSet('retromatch_save',S); return; }
+  var gained = 0;
+  while(S.lives<3 && now-S.lastLife>=LIFE_MS){ S.lives++; gained++; S.lastLife+=LIFE_MS; }
+  if(gained) toast('Восстановились жизни: +'+gained);
+  if(S.lives>=3) S.lastLife=now;
+  sSet('retromatch_save',S);
+}
+function spendLife(){
+  if(S.lives>=3){ S.lastLife=Date.now(); } // реген-таймер стартует с момента траты
+  S.lives=Math.max(0,S.lives-1); sSet('retromatch_save',S); drawLives();
+}
+function livesEta(){ if(S.lives>=3) return 0; return LIFE_MS-(Date.now()-S.lastLife); }
+
+// генерация поля без стартовых матчей
+function fixStart(){
+  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+    var t=grid[y][x];
+    while((x>=2&&grid[y][x-1]===t&&grid[y][x-2]===t)||(y>=2&&grid[y-1][x]===t&&grid[y-2][x]===t)) t=rnd(5);
+    grid[y][x]=t;
+  }
+}
+function newGrid(){
+  grid=[];
+  for(var y=0;y<N;y++){ grid[y]=[];
+    for(var x=0;x<N;x++) grid[y][x]=rnd(5);
+  }
+  fixStart();
+  if(!findMove()) shuffle(true);
+}
+
+// поиск ходов: перебор всех соседних свапов
+function matchAt(x,y){
+  var t=grid[y][x];
+  var c=1,i;
+  for(i=x-1;i>=0&&grid[y][i]===t;i--)c++;
+  for(i=x+1;i<N&&grid[y][i]===t;i++)c++;
+  if(c>=3) return true;
+  c=1;
+  for(i=y-1;i>=0&&grid[i][x]===t;i--)c++;
+  for(i=y+1;i<N&&grid[i][x]===t;i++)c++;
+  return c>=3;
+}
+function swapBack(x1,y1,x2,y2){ var t=grid[y1][x1]; grid[y1][x1]=grid[y2][x2]; grid[y2][x2]=t; }
+function findMove(){
+  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+    if(x<N-1){ swapBack(x,y,x+1,y);
+      var ok=matchAt(x,y)||matchAt(x+1,y); swapBack(x,y,x+1,y); if(ok) return true; }
+    if(y<N-1){ swapBack(x,y,x,y+1);
+      var ok2=matchAt(x,y)||matchAt(x,y+1); swapBack(x,y,x,y+1); if(ok2) return true; }
+  }
+  return false;
+}
+function shuffle(silent){
+  var tries=0;
+  do{ for(var y=0;y<N;y++) for(var x=0;x<N;x++) grid[y][x]=rnd(5);
+      fixStart(); tries++;
+  } while(!findMove() && tries<50);
+  draw(); if(!silent) toast('Ходов нет — поле перемешано');
+}
+
+// отрисовка
+function draw(){
+  levelStyle(S.lvl);
+  var b=$('board'); b.innerHTML='';
+  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+    var d=document.createElement('div'); d.className='tile';
+    d.textContent=LEVELS[S.lvl].s[grid[y][x]];
+    d.dataset.x=x; d.dataset.y=y; b.appendChild(d);
+  }
+  $('era').textContent=LEVELS[S.lvl].n;
+  drawLives();
+}
+function drawLives(){
+  var bm=document.getElementById('bMute'); if(bm) bm.textContent=S.mute?'🔇':'🎵';
+  var h=''; for(var i=0;i<3;i++) h+='<span class="lv'+(i<S.lives?' on':'')+'">❤️</span>';
+  $('livesBox').innerHTML=h;
+  $('scoreBox').textContent=score+' / '+goalFor(S.lvl);
+}
+function popCells(keys){
+  var b=$('board');
+  keys.forEach(function(k){ var p=k.split(','); var el=b.children[(+p[1])*N+(+p[0])];
+    if(el) el.classList.add('pop'); });
+  return new Promise(function(res){ setTimeout(res,190); });
+}
+
+// игровой цикл: свап -> матч -> удаление -> гравитация -> каскады
+function tileFromEvent(e){
+  var t=e.target;
+  while(t && !t.classList.contains('tile')) t=t.parentNode;
+  return t && t.classList ? t : null;
+}
+// Тап по фишке: выделить (или свап с ранее выделенной соседней)
+function selectTile(t){
+  if(busy||!playing) return;
+  var x=+t.dataset.x, y=+t.dataset.y;
+  if(sel && sel.x===x && sel.y===y){ sel=null; t.classList.remove('sel'); return; }
+  if(sel && (Math.abs(sel.x-x)+Math.abs(sel.y-y))===1){ doSwap(sel.x,sel.y,x,y); sel=null; return; }
+  var b=$('board');
+  if(sel) b.children[sel.y*N+sel.x].classList.remove('sel');
+  sel={x:x,y:y}; t.classList.add('sel');
+}
+// Свайп: перетащи фишку на соседнюю клетку (вверх/вниз/влево/вправо, не наискосок)
+var dragSrc=null, dragPt=null;
+$('board').addEventListener('pointerdown',function(e){
+  if(busy||!playing) return;
+  var t=tileFromEvent(e);
+  if(t){ dragSrc={x:+t.dataset.x,y:+t.dataset.y}; dragPt=[e.clientX,e.clientY]; e.preventDefault(); }
+});
+$('board').addEventListener('pointermove',function(e){
+  if(!dragSrc||busy||!playing) return;
+  var dx=e.clientX-dragPt[0], dy=e.clientY-dragPt[1];
+  var th=Math.min(window.innerWidth/11,44);
+  if(Math.abs(dx)<th && Math.abs(dy)<th) return;
+  var x2=dragSrc.x, y2=dragSrc.y;
+  if(Math.abs(dx)>Math.abs(dy)) x2+=(dx>0?1:-1); else y2+=(dy>0?1:-1);
+  var fx=dragSrc.x, fy=dragSrc.y;
+  dragSrc=null;
+  if(x2<0||x2>=N||y2<0||y2>=N) return;
+  if(sel){ $('board').children[sel.y*N+sel.x].classList.remove('sel'); sel=null; }
+  doSwap(fx,fy,x2,y2);
+});
+$('board').addEventListener('pointerup',function(e){
+  if(!dragSrc) return; // свайп уже обработан в move
+  dragSrc=null;
+  var t=tileFromEvent(e);
+  if(t) selectTile(t);
+});
+function doSwap(x1,y1,x2,y2){
+  busy=true;
+  swapBack(x1,y1,x2,y2); draw(); busy=false;
+  if(!matchAt(x1,y1)&&!matchAt(x2,y2)){
+    busy=true; swapBack(x1,y1,x2,y2); draw(); busy=false; return;
+  }
+  resolveAll();
+}
+async function resolveAll(){
+  busy=true; var mult=1;
+  while(true){
+    var cells=[];
+    for(var y=0;y<N;y++){ var run=1;
+      for(var x=1;x<=N;x++){ if(x<N&&grid[y][x]===grid[y][x-1]) run++;
+        else { if(run>=3) for(var k=x-run;k<x;k++) cells.push(k+','+y+':'+run); run=1; } } }
+    for(var cx=0;cx<N;cx++){ var run2=1;
+      for(var yy=1;yy<=N;yy++){ if(yy<N&&grid[yy][cx]===grid[yy-1][cx]) run2++;
+        else { if(run2>=3) for(var k2=yy-run2;k2<yy;k2++) cells.push(cx+','+k2+':'+run2); run2=1; } } }
+    if(!cells.length) break;
+    var uniq={}, pts=0;
+    cells.forEach(function(c){ var kv=c.split(':'), k=kv[0], runn=+kv[1];
+      if(!uniq[k]){ uniq[k]=runn; pts += (runn>=4?30:10)*mult; } });
+    score += pts; drawLives();
+    if(mult>1) showCombo('x'+mult+' 🔥');
+    await popCells(Object.keys(uniq));
+    Object.keys(uniq).forEach(function(k){ var p=k.split(','); grid[+p[1]][+p[0]]=-1; });
+    for(var x2=0;x2<N;x2++){
+      var w=N-1;
+      for(var y3=N-1;y3>=0;y3--) if(grid[y3][x2]!==-1){ grid[w][x2]=grid[y3][x2]; w--; }
+      for(var yw=w;yw>=0;yw--) grid[yw][x2]=rnd(5);
+    }
+    draw(); mult++;
+  }
+  busy=false;
+  if(score>=goalFor(S.lvl)){ win(); return; }
+  if(!findMove()) shuffle(false);
+}
+function showCombo(txt){
+  var c=$('combo'); c.textContent=txt; c.style.opacity=1; c.style.transform='translateY(0)';
+  var b=$('board').getBoundingClientRect();
+  c.style.left=(b.left+b.width/2-30)+'px'; c.style.top=(b.top+40)+'px';
+  setTimeout(function(){ c.style.opacity=0; c.style.transform='translateY(-24px)'; },450);
+}
+
+// таймер уровня
+function startLevel(){
+  score=0; timeLeft=timeFor(S.lvl); newGrid(); draw(); playing=true; playLoop(LEVELS[S.lvl].t);
+  var f=$('timeFill'); f.style.width='100%'; f.className='';
+  clearInterval(timerId);
+  timerId=setInterval(function(){
+    timeLeft--;
+    f.style.width=Math.max(0,timeLeft/timeFor(S.lvl)*100)+'%';
+    f.className = timeLeft<=10?'low':'';
+    if(timeLeft<=0){ clearInterval(timerId); playing=false; spendLife(); lose(); }
+  },1000);
+}
+function showQuote(i){
+  var L=LEVELS[i]; if(!L) return;
+  var pack=QUOTES_STORE[L.t]||[];
+  var qEl=$('quote'), wEl=$('wikiLink');
+  if(!qEl) return;
+  if(!pack.length){ qEl.style.display='none'; }
+  else{
+    qEl.style.display='block';
+    var r=pack[Math.floor(Math.random()*pack.length)];
+    var icons={q:'💬 цитата',s:'📣 поговорка',f:'💡 факт',m:'🙂 мем'};
+    var html='<div class="qt">'+(icons[r[0]]||'✨')+'</div>'+r[1];
+    if(r[2]) html+='<div class="qa">— '+r[2]+'</div>';
+    qEl.innerHTML=html;
+  }
+  if(wEl){
+    if(L.w){ wEl.style.display='block'; wEl.href=L.w; }
+    else{ wEl.style.display='none'; }
+  }
+}
+function win(){
+  playing=false; clearInterval(timerId);
+  if(score>S.record) S.record=score;
+  $('endIcon').textContent='🏆'; $('endTitle').textContent='Уровень пройден!';
+  $('endText').textContent='Очки: '+score+' · Рекорд: '+S.record;
+  showQuote(S.lvl);
+  S.lvl = (S.lvl+1)%LEVELS.length; sSet('retromatch_save',S);
+  $('bNext').textContent = S.lvl===0 ? 'Начать заново' : 'Следующий уровень';
+  $('ovlEnd').classList.add('show');
+}
+function lose(){
+  $('endIcon').textContent='⏰'; $('endTitle').textContent='Время вышло';
+  $('endText').textContent='Жизнь сгорела. Нужно было набрать '+goalFor(S.lvl)+' очков — попробуй ещё раз!';
+  $('bNext').textContent='Ещё раз';
+  $('ovlEnd').classList.add('show');
+}
+$('bNext').onclick=function(){
+  $('ovlEnd').classList.remove('show');
+  if(S.lives>0) startLevel(); else showLivesOvl();
+};
+
+// оверлей жизней
+function showLivesOvl(){
+  refillLives();
+  if(S.lives>0){ startLevel(); return; }
+  var eta=livesEta();
+  $('waitText').textContent = eta>0 ? 'Следующая жизнь появится через '+fmt(eta)+
+    '. Или получи её прямо сейчас:' : 'Жизни скоро восстановятся!';
+  $('ovlLives').classList.add('show');
+}
+$('bAd2').onclick=function(){ grantReward(); };
+$('bAd').onclick=function(){ grantReward(); };
+$('bBuy').onclick=$('bBuy2').onclick=function(){ buyHeart(); };
+
+// заглушки монетизации: здесь в релизе подключаются SDK
+function grantReward(){
+  // РЕЛИЗ: Яндекс — ysdk.adv.showRewardedVideo; VK — VKWebAppShowNativeAds (reward);
+  // ОК — FAPI.UI.showAd('rewarded'). Пока эмуляция с кулдауном 30 мин (как в Хомакоине).
+  var last=+sGet('rm_ad_ts',0);
+  if(Date.now()-last < 30*60*1000){
+    toast('Реклама будет доступна через '+fmt(30*60*1000-(Date.now()-last))); return;
+  }
+  sSet('rm_ad_ts',Date.now());
+  S.lives=Math.min(3,S.lives+1); S.lastLife=Date.now(); sSet('retromatch_save',S);
+  drawLives(); toast('+1 сердце за просмотр рекламы (эмуляция)');
+  $('ovlLives').classList.remove('show');
+}
+function buyHeart(){
+  // РЕЛИЗ: VK — VKWebAppShowOrderBox (голоса); ОК — FAPI.UI.showPayment (ОКи).
+  if(S.lives>=3){ toast('Все сердца на месте'); return; }
+  S.lives++; S.lastLife=Date.now(); sSet('retromatch_save',S);
+  drawLives(); toast('Сердце куплено! (эмуляция — в релизе списание голосов/ОКов)');
+  $('ovlLives').classList.remove('show');
+}
+
+// вызов друга: VK share с фоллбеком
+var isVK = false;
+try { isVK = /vk\.|userapi/.test(location.hostname); } catch(e){}
+var vkBridge = window.vkBridge;
+$('bShare').onclick=function(){
+  var msg='Соревнуемся в Ретро Матче! Мой рекорд: '+S.record+' очков';
+  if(isVK && vkBridge){ vkBridge.send('VKWebAppShare',{message:msg}).catch(function(){ toast('Не удалось открыть шэр'); }); }
+  else if(navigator.share){ navigator.share({text:msg}).catch(function(){}); }
+  else { toast('В ВК здесь появится шэр-окно — вызывай друзей!'); }
+};
+(function initVK(){
+  var s=document.createElement('script');
+  s.src='https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js';
+  s.onload=function(){
+    if(window.vkBridge){ vkBridge=window.vkBridge; vkBridge.send('VKWebAppInit').catch(function(){}); }
+  };
+  document.head.appendChild(s);
+})();
+
+// debug-кнопка (уберём в релизе)
+$('dbg').onclick=function(){
+  S.lives=3; S.lastLife=Date.now(); sSet('retromatch_save',S);
+  timeLeft=Math.max(timeLeft,60); drawLives(); toast('debug: жизни заполнены, время +60с');
+};
+
+// старт
+$('bPlay').onclick=function(){ $('ovlStart').classList.remove('show'); refillLives(); showLivesOvl(); };
+newGrid(); draw(); // поле видно уже под стартовым экраном
+refillLives(); drawLives();
+$('ovlStart').classList.add('show'); // показать стартовый экран (раньше не показывался — поле казалось пустым)
+</script>
+</body>
+</html>
